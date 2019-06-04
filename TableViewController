@@ -1,0 +1,76 @@
+
+import UIKit
+import MapKit
+import CoreLocation
+class TableViewController: UITableViewController {
+    var loc: String!
+    var ARTWORKS = [Artwork]()
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Uncomment the following line to preserve selection between presentations
+        // self.clearsSelectionOnViewWillAppear = false
+
+        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
+        // self.navigationItem.rightBarButtonItem = self.editButtonItem
+    }
+    override func viewWillAppear(_ animated: Bool) {
+     super.viewWillAppear(animated)
+        for aArtwork in artworks{
+            if(aArtwork.location == loc){
+                ARTWORKS.append(aArtwork)
+            }
+        }
+        //append all Artwork tha have the same location as the loc to ARTWORKS arrat
+    }
+    
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        // #warning Incomplete implementation, return the number of sections
+        return ARTWORKS.count
+    }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        // #warning Incomplete implementation, return the number of rows
+        return 1
+    }
+    
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell(style: UITableViewCell.CellStyle.subtitle, reuseIdentifier: "cell")
+        cell.textLabel?.text = ARTWORKS[indexPath.section].title
+        cell.detailTextLabel?.text = ARTWORKS[indexPath.section].artist
+        return cell
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        self.tableView!.deselectRow(at: indexPath, animated: true)
+        let oneArtwork = ARTWORKS[indexPath.section]
+        performSegue(withIdentifier: "toArtwork", sender: oneArtwork )
+    }//if a select action is acted in one of row them perform segue from one page to another
+    
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "toArtwork"{
+            let controller = segue.destination as! ArtWorkController
+            controller.oneArtwork = sender as? Artwork
+        }// it will transit information to report var in controller
+    }
+    
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        let initialHeader = loc
+        if(section == 0){
+            return initialHeader
+        }
+        //the first section will display the header that is the String loc
+        return nil
+    }
+    
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        //if memory is full then send a warning
+    }
+   
+    @IBAction func backButton(_ sender: UIButton) {
+    self.dismiss(animated: true, completion: nil)
+        //dismiss the segue have made that means it will jump to previous view
+    }
+}
