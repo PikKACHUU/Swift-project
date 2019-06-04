@@ -1,0 +1,58 @@
+
+import UIKit
+
+class ArtWorkController: UIViewController {
+    @IBOutlet weak var author: UILabel!
+    @IBOutlet weak var TITLE: UILabel!
+    @IBOutlet weak var text: UILabel!
+    @IBOutlet weak var year: UILabel!
+    @IBOutlet weak var picture: UIImageView!
+    var oneArtwork: Artwork!
+    override func viewDidLoad() {
+        super.viewDidLoad()
+       
+        // Do any additional setup after loading the view.
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        author.text = oneArtwork.artist
+        TITLE.text = oneArtwork.title
+        text.text = oneArtwork.Information
+        year.text = oneArtwork.yearOfWork
+        loadImg()
+        //assign values for labels
+    }
+    @IBAction func backButton(_ sender: UIButton) {
+    self.dismiss(animated: true, completion: nil)
+    }
+    //back to previous page
+    
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning(
+        )//if memory is full then send a warning
+    }
+    
+    func loadImg(){
+        let str = oneArtwork.fileName!.replacingOccurrences(of:" ",with: "%20")
+        let link = "https://cgi.csc.liv.ac.uk/~phil/Teaching/COMP228/artwork_images/"+str
+        let url=URL(string:link)!
+        let request = URLRequest(url:url)
+        //initialise a url request
+        let session = URLSession.shared
+        //set a tcp/ip session
+        let dataTask = session.dataTask(with: request,completionHandler: {
+            // create a task for data trasition
+            (data, response, error) -> Void in
+            if error != nil{
+                print(error.debugDescription)
+            }else{
+                let img = UIImage(data:data!)
+                DispatchQueue.main.async {
+                    self.picture.image = img
+                }
+            }
+        }) as URLSessionTask
+        dataTask.resume()
+    
+}
+}
