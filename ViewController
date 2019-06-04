@@ -1,0 +1,227 @@
+
+import UIKit
+import MapKit
+import CoreLocation
+struct Artwork:Codable{
+    let id: String
+    let title: String
+    let artist: String?
+    let yearOfWork :String?
+    let Information: String?
+    let lat: String
+    let long: String
+    let location: String
+    let locationNotes:String?
+    let fileName: String?
+    let lastModified: String?
+    let enabled: String?
+}
+//initialise a codable struct that will be used in json Data
+struct ArtWorks: Codable{
+    let campus_artworks: [Artwork]
+}
+//initialise a codalbe struct ArtWorks
+
+var artworks = [Artwork]()
+//initialise a array that store Artwork type
+class ViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, MKMapViewDelegate, CLLocationManagerDelegate {
+    
+    @IBOutlet weak var searchBar: UISearchBar!
+    var locationManager = CLLocationManager()
+    //initialise a locationManager for further use
+    @IBOutlet weak var myTable: UITableView!
+
+    @IBOutlet weak var myMap: MKMapView!
+    
+    var SearchText :String = ""
+    var boolean = 0
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return 1
+    }//let each section has one row
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell(style: UITableViewCell.CellStyle.subtitle, reuseIdentifier: "myCell")
+        cell.textLabel?.text = artworks[indexPath.section].title
+        cell.detailTextLabel?.text = artworks[indexPath.section].artist
+        //initialise the text of textlabel and detailTextlabel
+        if(boolean == 1){
+        if(artworks[indexPath.section].title.contains(SearchText)){
+            cell.isHidden = false
+        }else{
+            cell.isHidden = true
+            }
+        }// it is part of search bar but it does not work
+        return cell
+    }
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return artworks.count
+        //the number of section is the size of the array artworks
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        let initialHeader = artworks[0].location
+        if(section == 0){
+            return initialHeader
+        }else if(artworks[section].location != artworks[section-1].location){
+            return artworks[section].location
+        }//initialise the header ,if the header of previous section is same as the current section's header then return nil
+        return nil
+    }
+    
+    private func ReadData(){
+        if let url = URL(string: "https://cgi.csc.liv.ac.uk/~phil/Teaching/COMP228/artworksOnCampus/data.php?class=campus_artworks&lastUpdate=2017-11-01") {
+            let session = URLSession.shared
+            // initialise a connection session
+            session.dataTask(with: url) { (data, response, err) in
+                // create a task to make data transition
+                guard let jsonData = data else {
+                    return }
+                do{
+                    let decoder = JSONDecoder() //initialise a decoder
+                    let artList = try decoder.decode(ArtWorks.self, from: jsonData)
+                    for aArtwork in artList.campus_artworks {
+                        if(artworks.contains(where: { (Artwork) -> Bool in
+                            return Artwork.id == aArtwork.id
+                        })){
+                           return
+                        }else{
+                        artworks.append(aArtwork)
+                            //if the artwork is in the array of artworks ,then not append it again
+                        }
+                    }
+                    DispatchQueue.main.async{[unowned self] in
+                        self.addAnnotation()
+                        self.bubbleSort()
+                        self.myTable.reloadData();
+                        //back to main thread and do two functions and then reload table data
+                    }
+                } catch let jsonErr {
+                    print("Error decoding JSON", jsonErr)
+                }
+                }.resume()
+            
+        }
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        locationManager.delegate = self as CLLocationManagerDelegate
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+        ReadData()
+        myTable.reloadData()
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        myTable.reloadData()
+    }
+    
+    func addAnnotation(){
+        var annotation = [MKPointAnnotation]()
+        //initialise a array that type is MKPointAnnotation to store annotations
+        for i in 0..<artworks.count{
+        guard let lat :String = artworks[i].lat else {return}
+        guard let lon :String = artworks[i].long else {return}
+        guard let latitude = Double(lat) else { return }
+        guard let longitude = Double(lon) else { return }
+        let Location = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        let aAnnotation = MKPointAnnotation()
+        aAnnotation.coordinate = Location
+        aAnnotation.title = artworks[i].location
+        annotation.append(aAnnotation)
+        // store all annotations of artworks in array
+        }
+        for i in 0..<annotation.count{
+            var aAnnotation = annotation[0]
+            self.myMap.addAnnotation(aAnnotation)
+            if(annotation[i].title == aAnnotation.title){
+                aAnnotation = annotation[i]
+            }else{
+                aAnnotation = annotation[i]
+                self.myMap.addAnnotation(aAnnotation)
+            }
+            // if the annotation of same place is added ,then it will not be added again
+        }
+}
+    
+    func bubbleSort(){
+        var loc = locationManager.location
+        while(loc == nil){
+           loc = locationManager.location
+        }
+        let len = artworks.count
+        for i in 0..<len{
+            for j in 0..<len-i-1{
+                let lat :String = artworks[j].lat
+                let lon :String = artworks[j].long
+                guard let latitude = Double(lat) else { return }
+                guard let longitude = Double(lon) else { return }
+                let targetLoc = CLLocation(latitude: latitude, longitude: longitude)
+                let distance:CLLocationDistance = loc!.distance(from: targetLoc)
+                let lat2 = artworks[j+1].lat
+                let lon2 = artworks[j+1].long
+                guard let latitude2 = Double(lat2) else { return }
+                guard let longitude2 = Double(lon2) else { return }
+                let targetLoc2 = CLLocation(latitude: latitude2, longitude: longitude2)
+                let distance2:CLLocationDistance = loc!.distance(from: targetLoc2)
+                if(distance2 < distance){
+                    //if distance2 is smaller than distance , that means artworks[j+1] is close to current location
+                    let temp = artworks[j]
+                    artworks[j] = artworks[j+1]
+                    artworks[j+1] = temp
+                }// use bubble sort to sort the artworks  by distance to current location in descending order
+            }
+        }
+        for i in 0..<len{
+            for j in i+1..<len{
+                if(artworks[i].location == artworks[j].location){
+                    artworks.insert(artworks[j], at: i+1)
+                    artworks.remove(at: j+1)
+                }
+            }
+        }// use loop to group the artworks by buildings
+    }
+    
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let locationOfUser = locations[0]
+        let latitude = locationOfUser.coordinate.latitude
+        let longitude = locationOfUser.coordinate.longitude
+        let latDelta: CLLocationDegrees = 0.001
+        let lonDelta: CLLocationDegrees = 0.001
+        let span = MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: lonDelta)
+        let location = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        let region = MKCoordinateRegion(center: location, span: span)
+        self.myMap.setRegion(region, animated: true)
+    }
+    
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        self.myMap!.deselectAnnotation(view.annotation, animated: true)
+        let loc = view.annotation?.title
+        performSegue(withIdentifier: "ToDetail", sender: loc!)
+    }//if a select action is acted in one of annotation them perform segue from one page to another
+   
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "ToDetail"{
+            let controller = segue.destination as! TableViewController
+            controller.loc = sender as? String
+        }// it will transit information to loc var in controller
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        boolean = 1
+        self.searchBar.endEditing(true)
+        SearchText = searchText
+        DispatchQueue.main.async{[unowned self] in
+            self.myTable.reloadData();
+        }
+    }//searchBar is not available
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        //if memory is full then send a warning
+    }
+
+}
